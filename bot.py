@@ -124,4 +124,47 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def approve(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    file_id = context.user_data.get("pending_photo
+    file_id = context.user_data.get("pending_photo")
+    if not file_id:
+        await update.message.reply_text("No pending photo.")
+        return
+
+    await update.message.reply_photo(file_id)
+    logger.info("Photo approved: %s", file_id)
+    context.user_data["pending_photo"] = None
+
+
+async def reject(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    file_id = context.user_data.get("pending_photo")
+    logger.info("Photo rejected: %s", file_id)
+    context.user_data["pending_photo"] = None
+    await update.message.reply_text("Photo rejected.")
+
+
+# --- Main (NO ASYNCIO.RUN!) ---
+
+def main():
+    logger.info("Starting bot...")
+
+    BOT_TOKEN = os.getenv("BOT_TOKEN")
+    if not BOT_TOKEN:
+        raise RuntimeError("BOT_TOKEN environment variable is missing!")
+
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
+
+    # Commands
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("toggle_photo_mode", toggle_photo_mode))
+    app.add_handler(CommandHandler("approve", approve))
+    app.add_handler(CommandHandler("reject", reject))
+
+    # Media handlers
+    app.add_handler(MessageHandler(filters.VIDEO, handle_video))
+    app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
+
+    logger.info("Bot is now polling...")
+    app.run_polling()
+
+
+if __name__ == "__main__":
+    main()
