@@ -23,11 +23,11 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # -----------------------------
-# Admin IDs (add multiple)
+# Admin IDs
 # -----------------------------
 ADMIN_IDS = [
     860037601911,  # Aqib
-    # Add more IDs here
+    # Add more admin IDs here
 ]
 
 # -----------------------------
@@ -227,6 +227,32 @@ async def batch_watcher(app):
 
 
 # -----------------------------
+# post_init (Fix for async startup)
+# -----------------------------
+async def post_init(app):
+    commands = [
+        BotCommand("start", "Show your Telegram ID"),
+        BotCommand("help", "Show help menu"),
+        BotCommand("settings", "Show bot settings"),
+        BotCommand("admin_commands", "Show admin-only commands"),
+        BotCommand("toggle_photo_mode", "Toggle photo approval mode"),
+        BotCommand("approve", "Approve pending photo"),
+        BotCommand("reject", "Reject pending photo"),
+        BotCommand("flush", "Flush remaining videos"),
+    ]
+
+    await app.bot.set_my_commands(commands)
+
+    app.job_queue.run_repeating(
+        lambda ctx: asyncio.create_task(batch_watcher(app)),
+        interval=5,
+        first=5
+    )
+
+    logger.info("Post-init tasks completed.")
+
+
+# -----------------------------
 # Main (Railway-safe)
 # -----------------------------
 def main():
@@ -250,21 +276,8 @@ def main():
     app.add_handler(MessageHandler(filters.VIDEO, handle_video))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
 
-    # Register commands in Telegram menu
-    commands = [
-        BotCommand("start", "Show your Telegram ID"),
-        BotCommand("help", "Show help menu"),
-        BotCommand("settings", "Show bot settings"),
-        BotCommand("admin_commands", "Show admin-only commands"),
-        BotCommand("toggle_photo_mode", "Toggle photo approval mode"),
-        BotCommand("approve", "Approve pending photo"),
-        BotCommand("reject", "Reject pending photo"),
-        BotCommand("flush", "Flush remaining videos"),
-    ]
-    asyncio.create_task(app.bot.set_my_commands(commands))
-
-    # JobQueue batch watcher
-    app.job_queue.run_repeating(lambda ctx: asyncio.create_task(batch_watcher(app)), interval=5, first=5)
+    # Run async startup tasks AFTER loop starts
+    app.post_init = post_init
 
     logger.info("Bot is now polling...")
     app.run_polling()
