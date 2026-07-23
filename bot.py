@@ -3,7 +3,7 @@ import logging
 import asyncio
 import random
 import time
-from telegram import Update, InputMediaVideo
+from telegram import Update, InputMediaVideo, BotCommand
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, MessageHandler,
     ContextTypes, filters
@@ -23,9 +23,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # -----------------------------
-# Admin ID (replace with yours)
+# Admin IDs (add multiple)
 # -----------------------------
-ADMIN_ID = 7599601301,8637601933   # <-- CHANGE THIS TO YOUR TELEGRAM USER ID
+ADMIN_IDS = [
+    860037601911,  # Aqib
+    # Add more IDs here
+]
 
 # -----------------------------
 # Global State
@@ -57,6 +60,41 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         f"Bot ready.\nYour Telegram ID is: {update.effective_user.id}"
     )
+
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = (
+        "Available commands:\n"
+        "/start – Show your Telegram ID\n"
+        "/help – Show this help menu\n"
+        "/settings – Show bot settings\n\n"
+        "Admin-only commands are hidden."
+    )
+    await update.message.reply_text(text)
+
+
+@admin_only
+async def settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = (
+        "Settings:\n"
+        f"Photo approval mode: {'ON' if photo_approval_mode else 'OFF'}\n"
+        f"Batch timeout: {FLUSH_TIMEOUT} seconds\n"
+        "Album size: 10 videos\n"
+    )
+    await update.message.reply_text(text)
+
+
+@admin_only
+async def admin_commands(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    commands = [
+        "/toggle_photo_mode – Enable/disable photo approval mode",
+        "/approve – Approve pending photo",
+        "/reject – Reject pending photo",
+        "/flush – Manually flush remaining videos",
+        "/admin_commands – Show admin-only commands"
+    ]
+    text = "Admin-only commands:\n\n" + "\n".join(commands)
+    await update.message.reply_text(text)
 
 
 @admin_only
@@ -121,7 +159,6 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     message = update.message
 
-    # Auto-delete forwarded message
     try:
         await message.delete()
     except:
@@ -132,26 +169,21 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     file_id = message.video.file_id
 
-    # Dedup
     if file_id in video_cache:
         return
 
     video_cache.add(file_id)
 
-    # Update timers
     last_video_time = time.time()
     batch_count += 1
 
-    # Progress message
     await update.message.reply_text(f"Received {batch_count} videos…")
 
-    # Album batching
     if "album" not in context.user_data:
         context.user_data["album"] = []
 
     context.user_data["album"].append(file_id)
 
-    # Send album every 10 videos
     if len(context.user_data["album"]) >= 10:
         await send_album(update, context)
 
@@ -164,8 +196,7 @@ async def send_album(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not album:
         return
 
-    # Delay to avoid Telegram rate limits
-    delay = random.uniform(3, 6)
+    delay = random.uniform(2, 3)
     await asyncio.sleep(delay)
 
     media_group = [InputMediaVideo(media=fid) for fid in album]
@@ -180,24 +211,19 @@ async def send_album_to_chat(app, chat_id, album):
 
 
 # -----------------------------
-# Auto-detect batch end watcher
+# Batch Watcher (JobQueue)
 # -----------------------------
 async def batch_watcher(app):
     global last_video_time
 
-    while True:
-        await asyncio.sleep(5)
-        now = time.time()
+    now = time.time()
 
-        for chat_id, data in list(app.chat_data.items()):
-            album = data.get("album", [])
-            if album and now - last_video_time >= FLUSH_TIMEOUT:
-                try:
-                    await app.bot.send_message(chat_id, "Batch ended. Sending remaining videos…")
-                    await send_album_to_chat(app, chat_id, album)
-                    data["album"] = []
-                except Exception as e:
-                    logger.error("Auto-batch flush failed: %s", e)
+    for chat_id, data in list(app.chat_data.items()):
+        album = data.get("album", [])
+        if album and now - last_video_time >= FLUSH_TIMEOUT:
+            await app.bot.send_message(chat_id, "Batch ended. Sending remaining videos…")
+            await send_album_to_chat(app, chat_id, album)
+            data["album"] = []
 
 
 # -----------------------------
@@ -212,6 +238,9 @@ def main():
 
     # Commands
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("help", help_command))
+    app.add_handler(CommandHandler("settings", settings))
+    app.add_handler(CommandHandler("admin_commands", admin_commands))
     app.add_handler(CommandHandler("toggle_photo_mode", toggle_photo_mode))
     app.add_handler(CommandHandler("approve", approve))
     app.add_handler(CommandHandler("reject", reject))
@@ -221,8 +250,21 @@ def main():
     app.add_handler(MessageHandler(filters.VIDEO, handle_video))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
 
-    # Start batch watcher
-    app.job_queue.run_once(lambda ctx: asyncio.create_task(batch_watcher(app)), 1)
+    # Register commands in Telegram menu
+    commands = [
+        BotCommand("start", "Show your Telegram ID"),
+        BotCommand("help", "Show help menu"),
+        BotCommand("settings", "Show bot settings"),
+        BotCommand("admin_commands", "Show admin-only commands"),
+        BotCommand("toggle_photo_mode", "Toggle photo approval mode"),
+        BotCommand("approve", "Approve pending photo"),
+        BotCommand("reject", "Reject pending photo"),
+        BotCommand("flush", "Flush remaining videos"),
+    ]
+    asyncio.create_task(app.bot.set_my_commands(commands))
+
+    # JobQueue batch watcher
+    app.job_queue.run_repeating(lambda ctx: asyncio.create_task(batch_watcher(app)), interval=5, first=5)
 
     logger.info("Bot is now polling...")
     app.run_polling()
