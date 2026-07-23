@@ -1,13 +1,30 @@
 # Telegram Bot (Railway Deployment)
 
-## Deploying on Railway
+## Setup
 
-1. Create a new project on Railway
-2. Select "Deploy from GitHub"
-3. Push this repo to GitHub
-4. Railway will detect the Dockerfile automatically
-5. Add environment variable:
-   - BOT_TOKEN = your Telegram bot token
-6. Deploy
+1. Add your BOT_TOKEN in Railway → Variables
+2. Push this repo to GitHub
+3. Railway auto-detects Dockerfile
+4. Deploy
 
-Bot will run 24/7 on Railway Free Tier.
+## Commands
+
+/start  
+/help  
+/settings  
+/admin_commands  
+/toggle_photo_mode  
+/approve  
+/reject  
+/flush
+
+## Features
+
+- Album grouping (10 videos)
+- Auto-flush after 60s inactivity
+- Auto-detect batch end
+- Progress messages
+- Photo approval mode
+- Multiple admin IDs
+- Admin-only commands
+- Railway-safe
