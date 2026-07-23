@@ -26,7 +26,8 @@ logger = logging.getLogger(__name__)
 # Admin IDs
 # -----------------------------
 ADMIN_IDS = [
-    860037601911,  # Aqib
+    7599601301,  # Aqib
+    8637601933,
     # Add more admin IDs here
 ]
 
