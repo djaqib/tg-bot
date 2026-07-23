@@ -42,7 +42,8 @@ FLUSH_TIMEOUT = 60  # seconds
 # -----------------------------
 def admin_only(func):
     async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        if update.effective_user.id != ADMIN_ID:
+        user_id = update.effective_user.id
+        if user_id not in ADMIN_IDS:
             await update.message.reply_text("Access denied.")
             return
         return await func(update, context)
@@ -164,7 +165,7 @@ async def send_album(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # Delay to avoid Telegram rate limits
-    delay = random.uniform(2, 3)
+    delay = random.uniform(3, 6)
     await asyncio.sleep(delay)
 
     media_group = [InputMediaVideo(media=fid) for fid in album]
