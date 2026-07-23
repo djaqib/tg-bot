@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 # -----------------------------
 # Admin ID (replace with yours)
 # -----------------------------
-ADMIN_ID = 123456789   # <-- CHANGE THIS TO YOUR TELEGRAM USER ID
+ADMIN_ID = 7599601301,8637601933   # <-- CHANGE THIS TO YOUR TELEGRAM USER ID
 
 # -----------------------------
 # Global State
