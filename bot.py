@@ -1,3 +1,4 @@
+import os
 import logging
 import asyncio
 import random
@@ -23,11 +24,13 @@ logger = logging.getLogger(__name__)
 video_cache = set()
 photo_approval_mode = False
 
+
 # --- Commands ---
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info("User %s started the bot", update.effective_user.id)
     await update.message.reply_text("Bot ready. Forward videos and I'll clean them.")
+
 
 async def toggle_photo_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global photo_approval_mode
@@ -35,6 +38,7 @@ async def toggle_photo_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
     status = "ON" if photo_approval_mode else "OFF"
     logger.info("Photo approval mode toggled to %s", status)
     await update.message.reply_text(f"Photo approval mode is now {status}")
+
 
 # --- Core Logic ---
 
@@ -76,6 +80,7 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_video(video=file_id)
         logger.info("Sent clean single video: %s", file_id)
 
+
 async def send_album(update: Update, context: ContextTypes.DEFAULT_TYPE):
     album = context.user_data.get("album", [])
     if not album:
@@ -98,6 +103,7 @@ async def send_album(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     context.user_data["album"] = []
 
+
 # --- Photo Handling ---
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -116,41 +122,6 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text("Photo received. Approve or reject?")
 
+
 async def approve(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    file_id = context.user_data.get("pending_photo")
-    if not file_id:
-        await update.message.reply_text("No pending photo.")
-        return
-
-    await update.message.reply_photo(file_id)
-    logger.info("Photo approved: %s", file_id)
-    context.user_data["pending_photo"] = None
-
-async def reject(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    file_id = context.user_data.get("pending_photo")
-    logger.info("Photo rejected: %s", file_id)
-    context.user_data["pending_photo"] = None
-    await update.message.reply_text("Photo rejected.")
-
-# --- Main ---
-
-async def main():
-    BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
-
-    logger.info("Starting bot...")
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
-
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("toggle_photo_mode", toggle_photo_mode))
-    app.add_handler(CommandHandler("approve", approve))
-    app.add_handler(CommandHandler("reject", reject))
-
-    app.add_handler(MessageHandler(filters.VIDEO, handle_video))
-    app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
-
-    logger.info("Bot is now polling...")
-    await app.run_polling()
-
-if __name__ == "__main__":
-    import asyncio
-    asyncio.run(main())
+    file_id = context.user_data.get("pending_photo
