@@ -23,13 +23,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # -----------------------------
-# Admin IDs
+# Admin IDs (ONLY these users can use bot)
 # -----------------------------
 ADMIN_IDS = [
     7599601301,  # KR
     8637601933,
     8976017144,
-    # Add more admin IDs here
 ]
 
 # -----------------------------
@@ -49,28 +48,34 @@ def admin_only(func):
     async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_id = update.effective_user.id
         if user_id not in ADMIN_IDS:
-            await update.message.reply_text("Access denied.")
+            await update.message.reply_text("This bot is private. Access denied.")
             return
         return await func(update, context)
     return wrapper
 
 
 # -----------------------------
-# Commands
+# Commands (Admins only)
 # -----------------------------
+@admin_only
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         f"Bot ready.\nYour Telegram ID is: {update.effective_user.id}"
     )
 
 
+@admin_only
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (
         "Available commands:\n"
         "/start – Show your Telegram ID\n"
         "/help – Show this help menu\n"
-        "/settings – Show bot settings\n\n"
-        "Admin-only commands are hidden."
+        "/settings – Show bot settings\n"
+        "/admin_commands – Show admin commands\n"
+        "/toggle_photo_mode – Toggle photo approval mode\n"
+        "/approve – Approve pending photo\n"
+        "/reject – Reject pending photo\n"
+        "/flush – Flush remaining videos\n"
     )
     await update.message.reply_text(text)
 
@@ -93,9 +98,9 @@ async def admin_commands(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/approve – Approve pending photo",
         "/reject – Reject pending photo",
         "/flush – Manually flush remaining videos",
-        "/admin_commands – Show admin-only commands"
+        "/admin_commands – Show admin commands"
     ]
-    text = "Admin-only commands:\n\n" + "\n".join(commands)
+    text = "Admin commands:\n\n" + "\n".join(commands)
     await update.message.reply_text(text)
 
 
@@ -136,7 +141,7 @@ async def flush(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # -----------------------------
-# Photo Handler
+# Photo Handler (Admins only)
 # -----------------------------
 @admin_only
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -153,7 +158,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # -----------------------------
-# Video Handler
+# Video Handler (Admins only)
 # -----------------------------
 @admin_only
 async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -236,7 +241,7 @@ async def post_init(app):
         BotCommand("start", "Show your Telegram ID"),
         BotCommand("help", "Show help menu"),
         BotCommand("settings", "Show bot settings"),
-        BotCommand("admin_commands", "Show admin-only commands"),
+        BotCommand("admin_commands", "Show admin commands"),
         BotCommand("toggle_photo_mode", "Toggle photo approval mode"),
         BotCommand("approve", "Approve pending photo"),
         BotCommand("reject", "Reject pending photo"),
