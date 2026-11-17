@@ -4,10 +4,6 @@ import asyncio
 import random
 import time
 from telegram import Update, InputMediaVideo, BotCommand
-from telegram.ext import (
-    ApplicationBuilder, CommandHandler, MessageHandler,
-    ContextTypes, filters,
-
 from dotenv import load_dotenv  # 1. Import it first
 
 # 2. Now call it to load the .env file
