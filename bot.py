@@ -14,56 +14,55 @@ from telegram.ext import (
     ContextTypes, filters
 )
 
-# -----------------------------
-# Logging
-# -----------------------------
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.FileHandler("bot.log"),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger(__name__)
 
-)
+TOKEN = os.getenv("BOT_TOKEN", "").strip()
+DEFAULT_ADMINS = {8976017144, 8271828643}
+ADMINS = {int(x.strip()) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip()} or DEFAULT_ADMINS
+DEFAULT_TIMEOUT = max(10, int(os.getenv("BATCH_TIMEOUT", "60")))
+logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"), format="%(asctime)s %(levelname)s %(message)s")
+log = logging.getLogger("video-vault")
+last_video = {}
+locks = {}
+progress = {}
 
-# -----------------------------
-# Config
-# -----------------------------
-# Set DATA_DIR to a persistent volume (e.g. /data) so dedup history and
-# settings survive redeploys. Without a volume they reset on every deploy.
-DATA_DIR = os.getenv("DATA_DIR", ".")
-os.makedirs(DATA_DIR, exist_ok=True)
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS videos (
+ id BIGSERIAL PRIMARY KEY, owner_id BIGINT NOT NULL, chat_id BIGINT NOT NULL,
+ file_id TEXT NOT NULL, unique_id TEXT, file_name TEXT, caption TEXT,
+ file_size BIGINT, duration INTEGER, status TEXT NOT NULL DEFAULT 'queued',
+ received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), sent_at TIMESTAMPTZ, last_error TEXT
+);
+CREATE INDEX IF NOT EXISTS videos_lookup ON videos(owner_id, unique_id);
+CREATE INDEX IF NOT EXISTS videos_queue ON videos(owner_id, chat_id, status, received_at, id);
+CREATE TABLE IF NOT EXISTS settings (
+ owner_id BIGINT PRIMARY KEY, dedup BOOLEAN NOT NULL DEFAULT TRUE,
+ auto_mode BOOLEAN NOT NULL DEFAULT TRUE, batch_size INTEGER NOT NULL DEFAULT 10,
+ timeout_sec INTEGER NOT NULL DEFAULT 60, progress_every INTEGER NOT NULL DEFAULT 50
+);
+CREATE TABLE IF NOT EXISTS events (
+ id BIGSERIAL PRIMARY KEY, owner_id BIGINT NOT NULL, kind TEXT NOT NULL, detail TEXT,
+ created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+"""
 
-# Admin IDs: set ADMIN_IDS="123,456" as an env var, or edit the fallback below.
-_env_ids = os.getenv("ADMIN_IDS", "")
-ADMIN_IDS = {int(x) for x in _env_ids.replace(" ", "").split(",") if x.isdigit()} or {
-    7599601301,  # KR
-}
-
-# -----------------------------
-# Global State
-# -----------------------------
-video_cache = set()
-photo_approval_mode = False
-batch_count = 0
-last_video_time = 0
-FLUSH_TIMEOUT = 60  # seconds
-
-
-# -----------------------------
-# Admin-only decorator
-# -----------------------------
-def admin_only(func):
-    async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        user_id = update.effective_user.id
-        if user_id not in ADMIN_IDS:
-            await update.message.reply_text("This bot is private. Access denied.")
+def admin(fn):
+    @wraps(fn)
+    async def wrapped(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        u = update.effective_user
+        if not u or u.id not in ADMINS:
+            q = update.callback_query
+            if q:
+                await q.answer("Private bot: access denied.", show_alert=True)
+            elif update.effective_message:
+                await update.effective_message.reply_text("This bot is private. Access denied.")
             return
-        return await func(update, context)
-    return wrapper
+        return await fn(update, context)
+    return wrapped
+
+async def pool(context):
+    p = context.application.bot_data.get("pool")
+    if not p: raise RuntimeError("PostgreSQL pool is unavailable")
+    return p
 
 
 # -----------------------------
