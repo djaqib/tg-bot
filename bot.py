@@ -8,8 +8,6 @@ from dotenv import load_dotenv  # 1. Import it first
 
 # 2. Now call it to load the .env file
 load_dotenv()
-)
-
 
 TOKEN = os.getenv("BOT_TOKEN", "").strip()
 DEFAULT_ADMINS = {8976017144, 8271828643}
