@@ -27,15 +27,21 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+)
+
 # -----------------------------
-# Admin IDs (ONLY these users can use bot)
+# Config
 # -----------------------------
-ADMIN_IDS = [
+# Set DATA_DIR to a persistent volume (e.g. /data) so dedup history and
+# settings survive redeploys. Without a volume they reset on every deploy.
+DATA_DIR = os.getenv("DATA_DIR", ".")
+os.makedirs(DATA_DIR, exist_ok=True)
+
+# Admin IDs: set ADMIN_IDS="123,456" as an env var, or edit the fallback below.
+_env_ids = os.getenv("ADMIN_IDS", "")
+ADMIN_IDS = {int(x) for x in _env_ids.replace(" ", "").split(",") if x.isdigit()} or {
     7599601301,  # KR
-    8637601933,
-    8976017144,
-    7467197752,
-]
+}
 
 # -----------------------------
 # Global State
