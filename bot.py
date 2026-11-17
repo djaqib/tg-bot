@@ -6,7 +6,7 @@ import time
 from telegram import Update, InputMediaVideo, BotCommand
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, MessageHandler,
-    ContextTypes, filters
+    ContextTypes, filters,
 
 from dotenv import load_dotenv  # 1. Import it first
 
