@@ -1,0 +1,3 @@
+BOT_TOKEN=9002131198:AAHF6BcDkr4tV1gC2WZOSvoFG7bELxrx54Q
+ADMIN_IDS=8271828643,
+DATABASE_URL=postgresql://postgres:LTehopzZkhIHdrHzujaeftQosBwEAbiO@postgres.railway.internal:5432/railway
