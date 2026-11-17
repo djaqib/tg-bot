@@ -6,6 +6,9 @@ import time
 from helpers import admin_only
 from telegram import Update, InputMediaVideo, BotCommand
 from dotenv import load_dotenv  # 1. Import it first
+from telegram import Update, InlineKeyboardButton as Btn, InlineKeyboardMarkup as Markup, InputMediaVideo, BotCommand
+from telegram.error import TelegramError, RetryAfter, TimedOut, NetworkError
+from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, ContextTypes, filters
 
 # 2. Now call it to load the .env file
 load_dotenv()
